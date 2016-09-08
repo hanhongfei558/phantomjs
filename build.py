@@ -178,6 +178,7 @@ class PhantomJSBuilder(object):
             platformOptions = [
                 # use the headless QPA platform
                 "-qpa", "phantom",
+		"-no-qpa-platform-guard",
                 # explicitly compile with SSL support, so build will fail if headers are missing
                 "-openssl", "-openssl-linked",
                 # disable unnecessary Qt features
