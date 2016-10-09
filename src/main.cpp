@@ -35,6 +35,10 @@
 #include <QSslSocket>
 #include <QWebSettings>
 
+#ifdef Q_OS_LINUX
+#include <QFontDatabase>
+#endif
+
 #include <stdio.h>
 
 static int inner_main(int argc, char** argv)
@@ -47,15 +51,17 @@ static int inner_main(int argc, char** argv)
     app.setOrganizationDomain("www.ofilabs.com");
     app.setApplicationVersion(PHANTOMJS_VERSION_STRING);
 
-    // Registering an alternative Message Handler
-    qInstallMessageHandler(Utils::messageHandler);
-
-#if defined(Q_OS_LINUX)
+#ifdef Q_OS_LINUX
     if (QSslSocket::supportsSsl()) {
         // Don't perform on-demand loading of root certificates on Linux
         QSslSocket::addDefaultCaCertificates(QSslSocket::systemCaCertificates());
     }
+
+    QFontDatabase::addApplicationFont(":/fonts/unifont.ttf");
 #endif
+
+    // Registering an alternative Message Handler
+    qInstallMessageHandler(Utils::messageHandler);
 
     // Get the Phantom singleton
     Phantom* phantom = Phantom::instance();
