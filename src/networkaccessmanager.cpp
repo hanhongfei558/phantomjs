@@ -33,6 +33,7 @@
 #include <QDesktopServices>
 #include <QNetworkDiskCache>
 #include <QNetworkRequest>
+#include <QJsonObject>
 #include <QSslSocket>
 #include <QSslCertificate>
 #include <QSslCipher>
@@ -281,12 +282,12 @@ void NetworkAccessManager::setMaxAuthAttempts(int maxAttempts)
     m_maxAuthAttempts = maxAttempts;
 }
 
-void NetworkAccessManager::setCustomHeaders(const QVariantMap& headers)
+void NetworkAccessManager::setCustomHeaders(const QVariantList& headers)
 {
     m_customHeaders = headers;
 }
 
-QVariantMap NetworkAccessManager::customHeaders() const
+QVariantList NetworkAccessManager::customHeaders() const
 {
     return m_customHeaders;
 }
@@ -331,15 +332,6 @@ QNetworkReply* NetworkAccessManager::createRequest(Operation op, const QNetworkR
         }
     }
 
-    // set custom HTTP headers
-    QVariantMap::const_iterator i = m_customHeaders.begin();
-    while (i != m_customHeaders.end()) {
-        req.setRawHeader(i.key().toLatin1(), i.value().toByteArray());
-        ++i;
-    }
-
-    m_idCounter++;
-
     QVariantList headers;
     foreach(QByteArray headerName, req.rawHeaderList()) {
         QVariantMap header;
@@ -347,6 +339,10 @@ QNetworkReply* NetworkAccessManager::createRequest(Operation op, const QNetworkR
         header["value"] = QString::fromUtf8(req.rawHeader(headerName));
         headers += header;
     }
+
+    setRequestHeaders(&req);
+
+    m_idCounter++;
 
     QVariantMap data;
     data["id"] = m_idCounter;
@@ -552,4 +548,61 @@ void NetworkAccessManager::handleRedirect(const QUrl& url)
     emit resourceRedirect(data);
 
     get(QNetworkRequest(url));
+}
+
+void NetworkAccessManager::setRequestHeaders(QNetworkRequest* request)
+{
+    // save and clear existing headers
+    QHash<QByteArray, QByteArray> originalHeaders;
+    for (QByteArray headerName : request->rawHeaderList()) {
+        originalHeaders[headerName] = request->rawHeader(headerName);
+    }
+
+    // set custom headers
+    QVariantList::const_iterator it = m_customHeaders.begin();
+
+    while (it != m_customHeaders.end()) {
+        QVariant item = *it;
+        if (item.isValid()) {
+            if (item.type() == QVariant::String) {
+
+                // use the existing header
+                QByteArray headerName = item.toString().toLatin1();
+                QByteArray headerValue = originalHeaders[headerName];
+                request->setRawHeader(headerName, headerValue);
+
+                QString msg = QString("Network - Using the existing header \"%1\": \"%2\"").arg(QString(headerName), QString(headerValue));
+                qDebug() << qPrintable(msg);
+
+                // remove the header from old headers
+                originalHeaders.remove(headerName);
+            } else if (item.type() == QVariant::Map) {
+                QVariantMap obj = item.toMap();
+
+                for (QVariant key : obj.keys()) {
+                    QByteArray headerName = key.toString().toLatin1();
+                    QVariant objValue = obj.value(headerName);
+                    if (objValue.type() == QVariant::String) {
+                        QByteArray headerValue = objValue.toString().toLatin1();
+
+                        QString msg = QString("Network - Adding custom header \"%1\": \"%2\"").arg(QString(headerName), QString(headerValue));
+                        qDebug() << qPrintable(msg);
+
+                        request->setRawHeader(headerName, headerValue);
+
+                        // remove the header from old headers
+                        originalHeaders.remove(headerName);
+                    }
+                }
+            } else {
+                qDebug() << "Network - Unrecognized type of a header: " << item.type();
+            }
+        }
+        ++it;
+    }
+
+    // set the remaining original headers
+    for (QByteArray headerName : originalHeaders) {
+        request->setRawHeader(headerName, originalHeaders.value(headerName));
+    }
 }

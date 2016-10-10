@@ -395,12 +395,6 @@ WebPage::WebPage(QObject* parent, const QUrl& baseUrl)
     connect(m_customWebPage, SIGNAL(loadProgress(int)), this, SLOT(updateLoadingProgress(int)));
     connect(m_customWebPage, SIGNAL(repaintRequested(QRect)), this, SLOT(handleRepaintRequested(QRect)), Qt::QueuedConnection);
 
-
-    // Start with transparent background.
-    QPalette palette = m_customWebPage->palette();
-    palette.setBrush(QPalette::Base, Qt::transparent);
-    m_customWebPage->setPalette(palette);
-
     // Set the page Library path
     setLibraryPath(QFileInfo(phantomCfg->scriptFile()).dir().absolutePath());
 
@@ -440,7 +434,7 @@ WebPage::WebPage(QObject* parent, const QUrl& baseUrl)
             SIGNAL(resourceRedirect(QVariant)));
 
     m_dpi = qRound(QApplication::primaryScreen()->logicalDotsPerInch());
-    m_customWebPage->setViewportSize(QSize(400, 300));
+    m_customWebPage->setViewportSize(QSize(1024, 768));
 }
 
 WebPage::~WebPage()
@@ -834,12 +828,12 @@ void WebPage::finish(bool ok)
     emit loadFinished(status);
 }
 
-void WebPage::setCustomHeaders(const QVariantMap& headers)
+void WebPage::setCustomHeaders(const QVariantList& headers)
 {
     m_networkAccessManager->setCustomHeaders(headers);
 }
 
-QVariantMap WebPage::customHeaders() const
+QVariantList WebPage::customHeaders() const
 {
     return m_networkAccessManager->customHeaders();
 }
@@ -1756,11 +1750,11 @@ QString WebPage::focusedFrameName() const
 static void injectCallbacksObjIntoFrame(QWebFrame* frame, WebpageCallbacks* callbacksObject)
 {
     // Inject object only if it's not already present
-    if (frame->evaluateJavaScript(CALLBACKS_OBJECT_PRESENT).toBool() == false) {
+    /*if (frame->evaluateJavaScript(CALLBACKS_OBJECT_PRESENT).toBool() == false) {
         // Decorate the window object in this frame (object ownership left to the creator/parent)
         frame->addToJavaScriptWindowObject(CALLBACKS_OBJECT_NAME, callbacksObject, QWebFrame::QtOwnership);
         frame->evaluateJavaScript(CALLBACKS_OBJECT_INJECTION);
-    }
+    }*/
 }
 
 void WebPage::setupFrame(QWebFrame* frame)
