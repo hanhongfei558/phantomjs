@@ -342,6 +342,9 @@ QNetworkReply* NetworkAccessManager::createRequest(Operation op, const QNetworkR
         headers += header;
     }
 
+    // after request has been created, we can change the order of its headers
+    setRequestHeaders(&req);
+
     m_idCounter++;
     QVariantMap data;
     data["id"] = m_idCounter;
@@ -364,9 +367,6 @@ QNetworkReply* NetworkAccessManager::createRequest(Operation op, const QNetworkR
     } else {
         reply = QNetworkAccessManager::createRequest(op, req, outgoingData);
     }
-
-    // after request has been created, we can change the order of its headers
-    setRequestHeaders(&req);
 
     m_ids[reply] = m_idCounter;
 
@@ -548,19 +548,14 @@ QVariantList NetworkAccessManager::getHeadersFromReply(const QNetworkReply* repl
 
     return headers;
 }
-/*
-page.customHeaders = [
-{ 'Host': 'myhost.com'}, // puts the Host header with custom value before all headers
-'Accept-Language'  // pass a string to use the default (current) value
-// all not-specified headers will be in custom order with their current values
-];
-*/
+
 void NetworkAccessManager::setRequestHeaders(QNetworkRequest* request)
 {
     // save and clear existing headers
     QHash<QByteArray, QByteArray> originalHeaders;
     for (QByteArray headerName : request->rawHeaderList()) {
         originalHeaders[headerName] = request->rawHeader(headerName);
+        request->setRawHeader(headerName, QByteArray());
     }
 
     // set custom headers
@@ -570,22 +565,28 @@ void NetworkAccessManager::setRequestHeaders(QNetworkRequest* request)
         QVariant item = *it;
         if (item.isValid()) {
             if (item.type() == QVariant::String) {
+
                 // use the existing header
                 QByteArray headerName = item.toString().toLatin1();
                 QByteArray headerValue = originalHeaders[headerName];
                 request->setRawHeader(headerName, headerValue);
 
+                QString msg = QString("Network - Using the existing header \"%1\": \"%2\"").arg(QString(headerName), QString(headerValue));
+                qDebug() << qPrintable(msg);
+
                 // remove the header from old headers
                 originalHeaders.remove(headerName);
-            } else {
-                // assume that the item is the QJSonObject
-                QJsonObject obj = item.toJsonObject();
-                for (QString key : obj.keys()) {
-                    QByteArray headerName = key.toLatin1();
+            } else if (item.type() == QVariant::Map) {
+                QVariantMap obj = item.toMap();
 
-                    QJsonValue objValue = obj.value(key);
-                    if (objValue.isString()) {
+                for (QVariant key : obj.keys()) {
+                    QByteArray headerName = key.toString().toLatin1();
+                    QVariant objValue = obj.value(headerName);
+                    if (objValue.type() == QVariant::String) {
                         QByteArray headerValue = objValue.toString().toLatin1();
+
+                        QString msg = QString("Network - Adding custom header \"%1\": \"%2\"").arg(QString(headerName), QString(headerValue));
+                        qDebug() << qPrintable(msg);
 
                         request->setRawHeader(headerName, headerValue);
 
@@ -593,6 +594,8 @@ void NetworkAccessManager::setRequestHeaders(QNetworkRequest* request)
                         originalHeaders.remove(headerName);
                     }
                 }
+            } else {
+                qDebug() << "Network - Unrecognized type of a header: " << item.type();
             }
         }
         ++it;
