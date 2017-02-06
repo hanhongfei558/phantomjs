@@ -97,15 +97,6 @@ phantom.defaultErrorHandler = function(message, stack) {
 
 phantom.onError = phantom.defaultErrorHandler;
 
-phantom.callback = function(callback) {
-    var ret = phantom.createCallback();
-    ret.called.connect(function(args) {
-        var retVal = callback.apply(this, args);
-        ret.returnValue = retVal;
-    });
-    return ret;
-};
-
 (function() {
     // CommonJS module implementation follows
 
