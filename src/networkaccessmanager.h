@@ -28,8 +28,7 @@
   THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 
-#ifndef NETWORKACCESSMANAGER_H
-#define NETWORKACCESSMANAGER_H
+#pragma once
 
 #include <QNetworkAccessManager>
 #include <QNetworkReply>
@@ -37,7 +36,7 @@
 #include <QTimer>
 #include <QStringList>
 
-class Config;
+class Settings;
 class QAuthenticator;
 class QNetworkDiskCache;
 class QSslConfiguration;
@@ -82,13 +81,13 @@ class NetworkAccessManager : public QNetworkAccessManager
 {
     Q_OBJECT
 public:
-    NetworkAccessManager(QObject* parent, const Config* config);
+    NetworkAccessManager(QObject* parent, const Settings* config);
     void setUserName(const QString& userName);
     void setPassword(const QString& password);
     void setMaxAuthAttempts(int maxAttempts);
     void setResourceTimeout(int resourceTimeout);
-    void setCustomHeaders(const QVariantMap& headers);
-    QVariantMap customHeaders() const;
+    void setCustomHeaders(const QVariantList& headers);
+    QVariantList customHeaders() const;
 
     void setCookieJar(QNetworkCookieJar* cookieJar);
 
@@ -126,15 +125,14 @@ private slots:
 #endif
 
 private:
-    void prepareSslConfiguration(const Config* config);
+    void prepareSslConfiguration(const Settings* config);
     QVariantList getHeadersFromReply(const QNetworkReply* reply);
+    void setRequestHeaders(QNetworkRequest* request);
 
     QHash<QNetworkReply*, int> m_ids;
     QSet<QNetworkReply*> m_started;
     int m_idCounter;
     QNetworkDiskCache* m_networkDiskCache;
-    QVariantMap m_customHeaders;
+    QVariantList m_customHeaders;
     QSslConfiguration m_sslConfiguration;
 };
-
-#endif // NETWORKACCESSMANAGER_H

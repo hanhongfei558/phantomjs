@@ -65,7 +65,6 @@
 #include "networkaccessmanager.h"
 #include "phantom.h"
 #include "system.h"
-#include "utils.h"
 
 #ifdef Q_OS_WIN
 #include <fcntl.h>
@@ -234,7 +233,7 @@ protected:
             newPage = new WebPage(m_webPage);
         } else {
             newPage = new WebPage(Phantom::instance());
-            Phantom::instance()->m_pages.append(newPage);
+            Phantom::instance()->appendPage(newPage);
         }
         newPage->setCookieJar(m_cookieJar);
 
@@ -360,7 +359,7 @@ WebPage::WebPage(QObject* parent, const QUrl& baseUrl)
     setObjectName("WebPage");
     m_callbacks = new WebpageCallbacks(this);
     m_customWebPage = new CustomPage(this);
-    Config* phantomCfg = Phantom::instance()->config();
+    Settings* phantomCfg = Phantom::instance()->settings();
 
     // To grant universal access to a web page
     // attribute "WebSecurityEnabled" must be applied during the initializing
@@ -583,7 +582,6 @@ void WebPage::stop()
     m_customWebPage->triggerAction(QWebPage::Stop);
 }
 
-
 QString WebPage::plainText() const
 {
     return m_mainFrame->toPlainText();
@@ -768,11 +766,11 @@ QVariant WebPage::evaluateJavaScript(const QString& code)
     QVariant evalResult;
     QString function = "(" + code + ")()";
 
-    qDebug() << "WebPage - evaluateJavaScript" << function;
+    //qDebug() << "WebPage - evaluateJavaScript" << function;
 
     evalResult = m_currentFrame->evaluateJavaScript(function);
 
-    qDebug() << "WebPage - evaluateJavaScript result" << evalResult;
+    //qDebug() << "WebPage - evaluateJavaScript result" << evalResult;
 
     return evalResult;
 }
@@ -836,12 +834,12 @@ void WebPage::finish(bool ok)
     emit loadFinished(status);
 }
 
-void WebPage::setCustomHeaders(const QVariantMap& headers)
+void WebPage::setCustomHeaders(const QVariantList& headers)
 {
     m_networkAccessManager->setCustomHeaders(headers);
 }
 
-QVariantMap WebPage::customHeaders() const
+QVariantList WebPage::customHeaders() const
 {
     return m_networkAccessManager->customHeaders();
 }
@@ -975,13 +973,14 @@ void WebPage::close()
 bool WebPage::render(const QString& fileName, const QVariantMap& option)
 {
     if (m_mainFrame->contentsSize().isEmpty()) {
+        qDebug() << "Cannot render the empty frame";
         return false;
     }
 
     QString outFileName = fileName;
     QString tempFileName = "";
 
-    QString format = "";
+    QString format = "jpg";
     int quality = -1; // QImage#save default
 
     if (fileName == STDOUT_FILENAME || fileName == STDERR_FILENAME) {
@@ -1008,7 +1007,7 @@ bool WebPage::render(const QString& fileName, const QVariantMap& option)
         quality = option.value("quality").toInt();
     }
 
-    bool retval = true;
+    bool retval = false;
     if (format == "pdf") {
         QPdfWriter pdfWriter(fileName);
         retval = renderPdf(pdfWriter);
@@ -1020,13 +1019,8 @@ bool WebPage::render(const QString& fileName, const QVariantMap& option)
             mode = Content;
         }
         QImage rawPageRendering = renderImage(mode);
-
-        const char* f = 0; // 0 is QImage#save default
-        if (format != "") {
-            f = format.toLocal8Bit().constData();
-        }
-
-        retval = rawPageRendering.save(outFileName, f, quality);
+        qDebug() << "Saving to " << outFileName;
+        retval = rawPageRendering.save(outFileName, format.toLatin1().constData(), quality);
     }
 
     if (tempFileName != "") {
@@ -1212,7 +1206,7 @@ bool WebPage::renderPdf(QPdfWriter& pdfWriter)
     } else if (paperSize.contains("format")) {
         const QPageLayout::Orientation orientation = paperSize.contains("orientation")
                 && paperSize.value("orientation").toString().compare("landscape", Qt::CaseInsensitive) == 0 ?
-                QPageLayout::Portrait : QPageLayout::Landscape;
+                QPageLayout::Landscape : QPageLayout::Portrait;
         pdfWriter.setPageOrientation(orientation);
         static const struct {
             QString format;
@@ -1384,7 +1378,16 @@ void WebPage::_uploadFile(const QString& selector, const QStringList& fileNames)
 
 bool WebPage::injectJs(const QString& jsFilePath)
 {
-    return Utils::injectJsInFrame(jsFilePath, m_libraryPath, m_currentFrame);
+    QFile file(jsFilePath);
+
+    if (!file.open(QFile::ReadOnly | QFile::Text)) {
+        return false;
+    }
+
+    QTextStream in(&file);
+    m_currentFrame->evaluateJavaScript(in.readAll());
+
+    return true;
 }
 
 void WebPage::_appendScriptElement(const QString& scriptUrl)

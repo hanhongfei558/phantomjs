@@ -38,7 +38,6 @@
 
 #include "consts.h"
 #include "terminal.h"
-#include "utils.h"
 
 #define PROMPT                          "phantomjs> "
 #define HISTORY_FILENAME                "phantom_repl_history"
@@ -147,7 +146,8 @@ REPL::REPL(QWebFrame* webframe, Phantom* parent)
     linenoiseSetCompletionCallback(REPL::offerCompletion);
 
     // Inject REPL utility functions
-    m_webframe->evaluateJavaScript(Utils::readResourceFileUtf8(":/repl.js"));
+    // TODO: REPL
+    //m_webframe->evaluateJavaScript(Utils::readResourceFileUtf8(":/repl.js"));
 
     // Add self to JavaScript world
     m_webframe->addToJavaScriptWindowObject("_repl", this);

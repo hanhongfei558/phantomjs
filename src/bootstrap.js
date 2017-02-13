@@ -33,70 +33,6 @@
   (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
   THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
-
-phantom.__defineErrorSignalHandler__ = function(obj, page, handlers) {
-    var handlerName = 'onError';
-
-    Object.defineProperty(obj, handlerName, {
-        set: function (f) {
-            // Disconnect previous handler (if any)
-            var handlerObj = handlers[handlerName];
-            if (!!handlerObj && typeof handlerObj.callback === "function" && typeof handlerObj.connector === "function") {
-                try { page.javaScriptErrorSent.disconnect(handlerObj.connector); }
-                catch (e) { }
-            }
-
-            // Delete the previous handler
-            delete handlers[handlerName];
-
-            if (typeof f === 'function') {
-                var connector = function (message, lineNumber, source, stack) {
-                    var revisedStack = JSON.parse(stack).map(function (item) {
-                        return { file: item.url, line: item.lineNumber, function: item.functionName };
-                    });
-                    if (revisedStack.length == 0)
-                        revisedStack = [{ file: source, line: lineNumber }];
-
-                    f(message, revisedStack);
-                };
-                // Store the new handler for reference
-                handlers[handlerName] = {
-                    callback: f,
-                    connector: connector
-                };
-
-                page.javaScriptErrorSent.connect(connector);
-            }
-        },
-        get: function () {
-            var handlerObj = handlers[handlerName];
-            return (!!handlerObj && typeof handlerObj.callback === "function" && typeof handlerObj.connector === "function") ?
-                handlers[handlerName].callback :
-                undefined;
-        },
-        configurable: true
-    });
-};
-
-(function() {
-    var handlers = {};
-    phantom.__defineErrorSignalHandler__(phantom, phantom.page, handlers);
-})();
-
-// TODO: Make this output to STDERR
-phantom.defaultErrorHandler = function(message, stack) {
-    console.log(message + "\n");
-
-    stack.forEach(function(item) {
-        var message = item.file + ":" + item.line;
-        if (item["function"])
-            message += " in " + item["function"];
-        console.log("  " + message);
-    });
-};
-
-phantom.onError = phantom.defaultErrorHandler;
-
 phantom.callback = function(callback) {
     var ret = phantom.createCallback();
     ret.called.connect(function(args) {
@@ -246,9 +182,11 @@ phantom.callback = function(callback) {
     };
 
     Module.prototype._getFilename = function(request) {
-        var path, filename = null, _paths = this._getPaths(request);
+        var path,
+            filename = null,
+            _paths = this._getPaths(request);
 
-        for (var i=0; i<_paths.length && !filename; ++i) {
+        for (var i = 0; i < _paths.length && !filename; ++i) {
             path = _paths[i];
             filename = tryFile(path) || tryExtensions(path) || tryPackage(path) ||
                 tryExtensions(joinPath(path, 'index'));
@@ -318,11 +256,9 @@ phantom.callback = function(callback) {
         var cwd, mainFilename, mainModule = new Module();
         window.require = mainModule._getRequire();
         fs = loadFs();
-        cwd = fs.absolute(phantom.libraryPath);
+        cwd = phantom.libraryPath;
         mainFilename = joinPath(cwd, basename(require('system').args[0]) || 'repl');
         mainModule._setFilename(mainFilename);
     }());
 }());
 
-// Legacy way to use WebPage
-window.WebPage = require('webpage').create;

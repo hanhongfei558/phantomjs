@@ -26,8 +26,8 @@
   (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
   THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
+
 #include "consts.h"
-#include "utils.h"
 #include "phantom.h"
 #include "crashdump.h"
 
@@ -36,11 +36,39 @@
 #include <QSslSocket>
 #include <QWebSettings>
 
-#include <stdio.h>
-
 #ifdef Q_OS_LINUX
 Q_IMPORT_PLUGIN(PhantomIntegrationPlugin);
 #endif
+
+static bool printDebugMessages = false;
+
+void messageHandler(QtMsgType type, const QMessageLogContext& context, const QString& msg)
+{
+    Q_UNUSED(context);
+    QString now = QDateTime::currentDateTime().toString(Qt::ISODate);
+
+    switch (type) {
+    case QtInfoMsg:
+        fprintf(stderr, "%s [INFO] %s\n", qPrintable(now), qPrintable(msg));
+        break;
+    case QtDebugMsg:
+        if (printDebugMessages) {
+            fprintf(stderr, "%s [DEBUG] %s\n", qPrintable(now), qPrintable(msg));
+        }
+        break;
+    case QtWarningMsg:
+        if (printDebugMessages) {
+            fprintf(stderr, "%s [WARNING] %s\n", qPrintable(now), qPrintable(msg));
+        }
+        break;
+    case QtCriticalMsg:
+        fprintf(stderr, "%s [CRITICAL] %s\n", qPrintable(now), qPrintable(msg));
+        break;
+    case QtFatalMsg:
+        fprintf(stderr, "%s [FATAL] %s\n", qPrintable(now), qPrintable(msg));
+        abort();
+    }
+}
 
 static int inner_main(int argc, char** argv)
 {
@@ -58,7 +86,7 @@ static int inner_main(int argc, char** argv)
     app.setApplicationVersion(PHANTOMJS_VERSION_STRING);
 
     // Registering an alternative Message Handler
-    qInstallMessageHandler(Utils::messageHandler);
+    qInstallMessageHandler(messageHandler);
 
 #if defined(Q_OS_LINUX)
     if (QSslSocket::supportsSsl()) {

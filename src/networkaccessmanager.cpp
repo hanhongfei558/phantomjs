@@ -39,10 +39,10 @@
 #include <QSslKey>
 #include <QRegExp>
 
-#include "phantom.h"
-#include "config.h"
 #include "cookiejar.h"
 #include "networkaccessmanager.h"
+#include "phantom.h"
+#include "settings.h"
 
 // 10 MB
 const qint64 MAX_REQUEST_POST_BODY_SIZE = 10 * 1000 * 1000;
@@ -151,10 +151,10 @@ const ssl_protocol_option ssl_protocol_options[] = {
 };
 
 // public:
-NetworkAccessManager::NetworkAccessManager(QObject* parent, const Config* config)
+NetworkAccessManager::NetworkAccessManager(QObject* parent, const Settings* settings)
     : QNetworkAccessManager(parent)
-    , m_ignoreSslErrors(config->ignoreSslErrors())
-    , m_localUrlAccessEnabled(config->localUrlAccessEnabled())
+    , m_ignoreSslErrors(settings->ignoreSslErrors())
+    , m_localUrlAccessEnabled(settings->localUrlAccessEnabled())
     , m_authAttempts(0)
     , m_maxAuthAttempts(3)
     , m_resourceTimeout(0)
@@ -162,34 +162,34 @@ NetworkAccessManager::NetworkAccessManager(QObject* parent, const Config* config
     , m_networkDiskCache(0)
     , m_sslConfiguration(QSslConfiguration::defaultConfiguration())
 {
-    if (config->diskCacheEnabled()) {
+    if (settings->diskCacheEnabled()) {
         m_networkDiskCache = new QNetworkDiskCache(this);
 
-        if (config->diskCachePath().isEmpty()) {
+        if (settings->diskCachePath().isEmpty()) {
             m_networkDiskCache->setCacheDirectory(QStandardPaths::writableLocation(QStandardPaths::CacheLocation));
         } else {
-            m_networkDiskCache->setCacheDirectory(config->diskCachePath());
+            m_networkDiskCache->setCacheDirectory(settings->diskCachePath());
         }
 
-        if (config->maxDiskCacheSize() >= 0) {
-            m_networkDiskCache->setMaximumCacheSize(qint64(config->maxDiskCacheSize()) * 1024);
+        if (settings->maxDiskCacheSize() >= 0) {
+            m_networkDiskCache->setMaximumCacheSize(qint64(settings->maxDiskCacheSize()) * 1024);
         }
         setCache(m_networkDiskCache);
     }
 
     if (QSslSocket::supportsSsl()) {
-        prepareSslConfiguration(config);
+        prepareSslConfiguration(settings);
     }
 
     connect(this, SIGNAL(authenticationRequired(QNetworkReply*, QAuthenticator*)), SLOT(provideAuthentication(QNetworkReply*, QAuthenticator*)));
     connect(this, SIGNAL(finished(QNetworkReply*)), SLOT(handleFinished(QNetworkReply*)));
 }
 
-void NetworkAccessManager::prepareSslConfiguration(const Config* config)
+void NetworkAccessManager::prepareSslConfiguration(const Settings* settings)
 {
     m_sslConfiguration = QSslConfiguration::defaultConfiguration();
 
-    if (config->ignoreSslErrors()) {
+    if (settings->ignoreSslErrors()) {
         m_sslConfiguration.setPeerVerifyMode(QSslSocket::VerifyNone);
     }
 
@@ -197,7 +197,7 @@ void NetworkAccessManager::prepareSslConfiguration(const Config* config)
     for (const ssl_protocol_option* proto_opt = ssl_protocol_options;
             proto_opt->name;
             proto_opt++) {
-        if (config->sslProtocol() == proto_opt->name) {
+        if (settings->sslProtocol() == proto_opt->name) {
             m_sslConfiguration.setProtocol(proto_opt->proto);
             setProtocol = true;
             break;
@@ -210,10 +210,10 @@ void NetworkAccessManager::prepareSslConfiguration(const Config* config)
 
     // Essentially the same as what QSslSocket::setCiphers(QString) does.
     // That overload isn't available on QSslConfiguration.
-    if (!config->sslCiphers().isEmpty()) {
+    if (!settings->sslCiphers().isEmpty()) {
         QList<QSslCipher> cipherList;
         foreach(const QString & cipherName,
-                config->sslCiphers().split(QLatin1String(":"),
+                settings->sslCiphers().split(QLatin1String(":"),
                                            QString::SkipEmptyParts)) {
             QSslCipher cipher(cipherName);
             if (!cipher.isNull()) {
@@ -225,16 +225,16 @@ void NetworkAccessManager::prepareSslConfiguration(const Config* config)
         }
     }
 
-    if (!config->sslCertificatesPath().isEmpty()) {
+    if (!settings->sslCertificatesPath().isEmpty()) {
         QList<QSslCertificate> caCerts = QSslCertificate::fromPath(
-                                             config->sslCertificatesPath(), QSsl::Pem, QRegExp::Wildcard);
+                                             settings->sslCertificatesPath(), QSsl::Pem, QRegExp::Wildcard);
 
         m_sslConfiguration.setCaCertificates(caCerts);
     }
 
-    if (!config->sslClientCertificateFile().isEmpty()) {
+    if (!settings->sslClientCertificateFile().isEmpty()) {
         QList<QSslCertificate> clientCerts = QSslCertificate::fromPath(
-                config->sslClientCertificateFile(), QSsl::Pem, QRegExp::Wildcard);
+                settings->sslClientCertificateFile(), QSsl::Pem, QRegExp::Wildcard);
 
         if (!clientCerts.isEmpty()) {
             QSslCertificate clientCert = clientCerts.first();
@@ -245,14 +245,14 @@ void NetworkAccessManager::prepareSslConfiguration(const Config* config)
             m_sslConfiguration.setLocalCertificate(clientCert);
 
             QFile* keyFile = NULL;
-            if (config->sslClientKeyFile().isEmpty()) {
-                keyFile = new QFile(config->sslClientCertificateFile());
+            if (settings->sslClientKeyFile().isEmpty()) {
+                keyFile = new QFile(settings->sslClientCertificateFile());
             } else {
-                keyFile = new QFile(config->sslClientKeyFile());
+                keyFile = new QFile(settings->sslClientKeyFile());
             }
 
             if (keyFile->open(QIODevice::ReadOnly | QIODevice::Text)) {
-                QSslKey key(keyFile->readAll(), QSsl::Rsa, QSsl::Pem, QSsl::PrivateKey, config->sslClientKeyPassphrase());
+                QSslKey key(keyFile->readAll(), QSsl::Rsa, QSsl::Pem, QSsl::PrivateKey, settings->sslClientKeyPassphrase());
 
                 m_sslConfiguration.setPrivateKey(key);
                 keyFile->close();
@@ -281,12 +281,12 @@ void NetworkAccessManager::setMaxAuthAttempts(int maxAttempts)
     m_maxAuthAttempts = maxAttempts;
 }
 
-void NetworkAccessManager::setCustomHeaders(const QVariantMap& headers)
+void NetworkAccessManager::setCustomHeaders(const QVariantList& headers)
 {
     m_customHeaders = headers;
 }
 
-QVariantMap NetworkAccessManager::customHeaders() const
+QVariantList NetworkAccessManager::customHeaders() const
 {
     return m_customHeaders;
 }
@@ -308,7 +308,7 @@ QNetworkReply* NetworkAccessManager::createRequest(Operation op, const QNetworkR
     QNetworkRequest req(request);
 
 #if QT_VERSION >= QT_VERSION_CHECK(5, 6, 0)
-    req.setAttribute(QNetworkRequest::FollowRedirectsAttribute, true);
+    req.setAttribute(QNetworkRequest::FollowRedirectsAttribute, false);
 #endif
 
     QString scheme = req.url().scheme().toLower();
@@ -335,15 +335,6 @@ QNetworkReply* NetworkAccessManager::createRequest(Operation op, const QNetworkR
         }
     }
 
-    // set custom HTTP headers
-    QVariantMap::const_iterator i = m_customHeaders.begin();
-    while (i != m_customHeaders.end()) {
-        req.setRawHeader(i.key().toLatin1(), i.value().toByteArray());
-        ++i;
-    }
-
-    m_idCounter++;
-
     QVariantList headers;
     foreach(QByteArray headerName, req.rawHeaderList()) {
         QVariantMap header;
@@ -351,6 +342,8 @@ QNetworkReply* NetworkAccessManager::createRequest(Operation op, const QNetworkR
         header["value"] = QString::fromUtf8(req.rawHeader(headerName));
         headers += header;
     }
+
+    m_idCounter++;
 
     QVariantMap data;
     data["id"] = m_idCounter;
@@ -373,6 +366,8 @@ QNetworkReply* NetworkAccessManager::createRequest(Operation op, const QNetworkR
     } else {
         reply = QNetworkAccessManager::createRequest(op, req, outgoingData);
     }
+
+    setRequestHeaders(&req);
 
     m_ids[reply] = m_idCounter;
 
@@ -563,3 +558,61 @@ void NetworkAccessManager::handleRedirect(const QUrl& url)
     get(QNetworkRequest(url));
 }
 #endif
+
+void NetworkAccessManager::setRequestHeaders(QNetworkRequest* request)
+{
+    // save and clear existing headers
+    QHash<QByteArray, QByteArray> originalHeaders;
+    for (QByteArray headerName : request->rawHeaderList()) {
+        originalHeaders[headerName] = request->rawHeader(headerName);
+        request->setRawHeader(headerName, QByteArray());
+    }
+
+    // set custom headers
+    QVariantList::const_iterator it = m_customHeaders.begin();
+
+    while (it != m_customHeaders.end()) {
+        QVariant item = *it;
+        if (item.isValid()) {
+            if (item.type() == QVariant::String) {
+
+                // use the existing header
+                QByteArray headerName = item.toString().toLatin1();
+                QByteArray headerValue = originalHeaders[headerName];
+                request->setRawHeader(headerName, headerValue);
+
+                QString msg = QString("Network - Using the existing header \"%1\": \"%2\"").arg(QString(headerName), QString(headerValue));
+                qDebug() << qPrintable(msg);
+
+                // remove the header from old headers
+                originalHeaders.remove(headerName);
+            } else if (item.type() == QVariant::Map) {
+                QVariantMap obj = item.toMap();
+
+                for (QVariant key : obj.keys()) {
+                    QByteArray headerName = key.toString().toLatin1();
+                    QVariant objValue = obj.value(headerName);
+                    if (objValue.type() == QVariant::String) {
+                        QByteArray headerValue = objValue.toString().toLatin1();
+
+                        QString msg = QString("Network - Adding custom header \"%1\": \"%2\"").arg(QString(headerName), QString(headerValue));
+                        qDebug() << qPrintable(msg);
+
+                        request->setRawHeader(headerName, headerValue);
+
+                        // remove the header from old headers
+                        originalHeaders.remove(headerName);
+                    }
+                }
+            } else {
+                qDebug() << "Network - Unrecognized type of a header: " << item.type();
+            }
+        }
+        ++it;
+    }
+
+    // set the remaining original headers
+    for (QByteArray headerName : originalHeaders) {
+        request->setRawHeader(headerName, originalHeaders.value(headerName));
+    }
+}
