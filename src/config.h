@@ -60,7 +60,6 @@ class Config: public QObject
     Q_PROPERTY(bool javascriptCanOpenWindows READ javascriptCanOpenWindows WRITE setJavascriptCanOpenWindows)
     Q_PROPERTY(bool javascriptCanCloseWindows READ javascriptCanCloseWindows WRITE setJavascriptCanCloseWindows)
     Q_PROPERTY(QString sslProtocol READ sslProtocol WRITE setSslProtocol)
-    Q_PROPERTY(QString sslCiphers READ sslCiphers WRITE setSslCiphers)
     Q_PROPERTY(QString sslCertificatesPath READ sslCertificatesPath WRITE setSslCertificatesPath)
     Q_PROPERTY(QString sslClientCertificateFile READ sslClientCertificateFile WRITE setSslClientCertificateFile)
     Q_PROPERTY(QString sslClientKeyFile READ sslClientKeyFile WRITE setSslClientKeyFile)

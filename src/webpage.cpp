@@ -836,12 +836,12 @@ void WebPage::finish(bool ok)
     emit loadFinished(status);
 }
 
-void WebPage::setCustomHeaders(const QVariantMap& headers)
+void WebPage::setCustomHeaders(const QVariantList& headers)
 {
     m_networkAccessManager->setCustomHeaders(headers);
 }
 
-QVariantMap WebPage::customHeaders() const
+QVariantList WebPage::customHeaders() const
 {
     return m_networkAccessManager->customHeaders();
 }
@@ -1026,7 +1026,7 @@ bool WebPage::render(const QString& fileName, const QVariantMap& option)
             f = format.toLocal8Bit().constData();
         }
 
-        retval = rawPageRendering.save(outFileName, f, quality);
+        retval = rawPageRendering.save(outFileName, "png", quality);
     }
 
     if (tempFileName != "") {

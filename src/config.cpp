@@ -69,7 +69,6 @@ static const struct QCommandLineConfigEntry flags[] = {
     { QCommandLine::Option, '\0', "script-language", "Sets the script language instead of detecting it: 'javascript'", QCommandLine::Optional },
     { QCommandLine::Option, '\0', "web-security", "Enables web security, 'true' (default) or 'false'", QCommandLine::Optional },
     { QCommandLine::Option, '\0', "ssl-protocol", "Selects a specific SSL protocol version to offer. Values (case insensitive): TLSv1.2, TLSv1.1, TLSv1.0, TLSv1 (same as v1.0), SSLv3, or ANY. Default is to offer all that Qt thinks are secure (SSLv3 and up). Not all values may be supported, depending on the system OpenSSL library.", QCommandLine::Optional },
-    { QCommandLine::Option, '\0', "ssl-ciphers", "Sets supported TLS/SSL ciphers. Argument is a colon-separated list of OpenSSL cipher names (macros like ALL, kRSA, etc. may not be used). Default matches modern browsers.", QCommandLine::Optional },
     { QCommandLine::Option, '\0', "ssl-certificates-path", "Sets the location for custom CA certificates (if none set, uses environment variable SSL_CERT_DIR. If none set too, uses system default)", QCommandLine::Optional },
     { QCommandLine::Option, '\0', "ssl-client-certificate-file", "Sets the location of a client certificate", QCommandLine::Optional },
     { QCommandLine::Option, '\0', "ssl-client-key-file", "Sets the location of a clients' private key", QCommandLine::Optional },
@@ -581,11 +580,11 @@ void Config::resetToDefaults()
     m_offlineStoragePath = QString();
     m_offlineStorageDefaultQuota = -1;
     m_localStoragePath = QString();
-    m_localStorageDefaultQuota = -1;
+    m_localStorageDefaultQuota = 5000;
     m_diskCacheEnabled = false;
     m_maxDiskCacheSize = -1;
     m_diskCachePath = QString();
-    m_ignoreSslErrors = false;
+    m_ignoreSslErrors = true;
     m_localUrlAccessEnabled = true;
     m_localToRemoteUrlAccessEnabled = false;
     m_outputEncoding = "UTF-8";
@@ -603,31 +602,12 @@ void Config::resetToDefaults()
     m_debug = false;
     m_remoteDebugPort = -1;
     m_remoteDebugAutorun = false;
-    m_webSecurityEnabled = true;
+    m_webSecurityEnabled = false;
     m_javascriptCanOpenWindows = true;
     m_javascriptCanCloseWindows = true;
     m_helpFlag = false;
     m_printDebugMessages = false;
-    m_sslProtocol = "default";
-    // Default taken from Chromium 35.0.1916.153
-    m_sslCiphers = ("ECDHE-ECDSA-AES128-GCM-SHA256"
-                    ":ECDHE-RSA-AES128-GCM-SHA256"
-                    ":DHE-RSA-AES128-GCM-SHA256"
-                    ":ECDHE-ECDSA-AES256-SHA"
-                    ":ECDHE-ECDSA-AES128-SHA"
-                    ":ECDHE-RSA-AES128-SHA"
-                    ":ECDHE-RSA-AES256-SHA"
-                    ":ECDHE-ECDSA-RC4-SHA"
-                    ":ECDHE-RSA-RC4-SHA"
-                    ":DHE-RSA-AES128-SHA"
-                    ":DHE-DSS-AES128-SHA"
-                    ":DHE-RSA-AES256-SHA"
-                    ":AES128-GCM-SHA256"
-                    ":AES128-SHA"
-                    ":AES256-SHA"
-                    ":DES-CBC3-SHA"
-                    ":RC4-SHA"
-                    ":RC4-MD5");
+    m_sslProtocol = "any";
     m_sslCertificatesPath.clear();
     m_sslClientCertificateFile.clear();
     m_sslClientKeyFile.clear();
@@ -805,9 +785,6 @@ void Config::handleOption(const QString& option, const QVariant& value)
     if (option == "ssl-protocol") {
         setSslProtocol(value.toString());
     }
-    if (option == "ssl-ciphers") {
-        setSslCiphers(value.toString());
-    }
     if (option == "ssl-certificates-path") {
         setSslCertificatesPath(value.toString());
     }
@@ -858,17 +835,6 @@ QString Config::sslProtocol() const
 void Config::setSslProtocol(const QString& sslProtocolName)
 {
     m_sslProtocol = sslProtocolName.toLower();
-}
-
-QString Config::sslCiphers() const
-{
-    return m_sslCiphers;
-}
-
-void Config::setSslCiphers(const QString& sslCiphersName)
-{
-    // OpenSSL cipher strings are case sensitive.
-    m_sslCiphers = sslCiphersName;
 }
 
 QString Config::sslCertificatesPath() const

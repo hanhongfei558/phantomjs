@@ -60,13 +60,6 @@ static int inner_main(int argc, char** argv)
     // Registering an alternative Message Handler
     qInstallMessageHandler(Utils::messageHandler);
 
-#if defined(Q_OS_LINUX)
-    if (QSslSocket::supportsSsl()) {
-        // Don't perform on-demand loading of root certificates on Linux
-        QSslSocket::addDefaultCaCertificates(QSslSocket::systemCaCertificates());
-    }
-#endif
-
     // Get the Phantom singleton
     Phantom* phantom = Phantom::instance();
 

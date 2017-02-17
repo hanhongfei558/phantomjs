@@ -161,7 +161,8 @@ function definePageCallbackHandler(page, handlers, handlerName, callbackConstruc
             return (!!handlerObj && typeof handlerObj.callback === "function" && typeof handlerObj.connector === "function") ?
                 handlers[handlerName].callback :
                 undefined;
-        }
+        },
+        configurable: true
     });
 }
 
