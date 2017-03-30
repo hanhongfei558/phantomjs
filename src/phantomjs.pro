@@ -95,12 +95,11 @@ win32-msvc* {
 }
 
 linux {
-    include($$PWD/qt-qpa-platform-plugin/phantom.pri)
-
     CONFIG += c++11
     QTPLUGIN.platforms = -
-    LIBS += -L$$PWD/qt-qpa-platform-plugin/plugins/platforms
-    LIBS += -lqphantom
+    # LIBS += -L$$PWD/qt-qpa-platform-plugin/plugins/platforms -lqphantom
+    LIBS += -L/mnt/dev/projects/qt5/qtbase/plugins/platforms -lqphantom
+    QTPLUGIN.platforms += qphantom
 }
 
 openbsd* {

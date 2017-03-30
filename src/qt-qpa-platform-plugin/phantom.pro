@@ -1,5 +1,7 @@
 TARGET = qphantom
-CONFIG += static
+TEMPLATE = lib
+CONFIG += plugin staticlib
+DESTDIR = $$PWD
 
 PLUGIN_TYPE = platforms
 PLUGIN_CLASS_NAME = PhantomIntegrationPlugin

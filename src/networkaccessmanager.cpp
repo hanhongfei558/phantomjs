@@ -583,8 +583,12 @@ void NetworkAccessManager::setRequestHeaders(QNetworkRequest* request)
                 // use the existing header
                 QByteArray headerName = item.toString().toLatin1();
                 QByteArray headerValue = originalHeaders[headerName];
-                request->setRawHeader(headerName, headerValue);
 
+                if (headerValue.isEmpty()) {
+                    headerValue = "preserve";
+                }
+
+                request->setRawHeader(headerName, headerValue);
                 QString msg = QString("Network - Using the existing header \"%1\": \"%2\"").arg(QString(headerName), QString(headerValue));
                 qDebug() << qPrintable(msg);
 
@@ -616,7 +620,7 @@ void NetworkAccessManager::setRequestHeaders(QNetworkRequest* request)
     }
 
     // set the remaining original headers
-    for (QByteArray headerName : originalHeaders) {
+    for (QByteArray headerName : originalHeaders.keys()) {
         request->setRawHeader(headerName, originalHeaders.value(headerName));
     }
 }

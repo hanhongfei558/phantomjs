@@ -106,6 +106,8 @@ public:
         if (extension == ChooseMultipleFilesExtension) {
             static_cast<ChooseMultipleFilesExtensionReturn*>(output)->fileNames = m_uploadFiles;
             return true;
+        } else if (extension == ErrorPageExtension) {
+            return true;
         } else {
             return false;
         }
@@ -133,7 +135,7 @@ public slots:
 protected:
     bool supportsExtension(Extension extension) const
     {
-        return extension == ChooseMultipleFilesExtension;
+        return (extension == ChooseMultipleFilesExtension || extension == ErrorPageExtension);
     }
 
     QString chooseFile(QWebFrame* originatingFrame, const QString& oldFile)
@@ -175,6 +177,17 @@ protected:
         Q_UNUSED(lineNumber);
         Q_UNUSED(sourceID);
         emit m_webPage->javaScriptConsoleMessageSent(message);
+    }
+
+    void consoleMessageReceived(QWebPage::MessageSource source, QWebPage::MessageLevel level, const QString& message, int lineNumber, const QString& sourceID)
+    {
+        Q_UNUSED(source);
+
+        if (level == QWebPage::ErrorMessageLevel) {
+            emit m_webPage->javaScriptErrorSent(message, lineNumber, sourceID, QString());
+        } else {
+            emit m_webPage->javaScriptConsoleMessageSent(message);
+        }
     }
 
     void javaScriptError(const QString& message, int lineNumber, const QString& sourceID, const QString& stack)
@@ -395,11 +408,6 @@ WebPage::WebPage(QObject* parent, const QUrl& baseUrl)
     connect(m_customWebPage, SIGNAL(loadProgress(int)), this, SLOT(updateLoadingProgress(int)));
     connect(m_customWebPage, SIGNAL(repaintRequested(QRect)), this, SLOT(handleRepaintRequested(QRect)), Qt::QueuedConnection);
 
-    // Start with transparent background.
-    QPalette palette = m_customWebPage->palette();
-    palette.setBrush(QPalette::Base, Qt::transparent);
-    m_customWebPage->setPalette(palette);
-
     // Set the page Library path
     setLibraryPath(QFileInfo(phantomCfg->scriptFile()).dir().absolutePath());
 
@@ -408,7 +416,7 @@ WebPage::WebPage(QObject* parent, const QUrl& baseUrl)
     m_mainFrame->setScrollBarPolicy(Qt::Vertical, Qt::ScrollBarAlwaysOff);
 
     QWebSettings* pageSettings = m_customWebPage->settings();
-    pageSettings->setAttribute(QWebSettings::OfflineStorageDatabaseEnabled, true);
+    pageSettings->setAttribute(QWebSettings::OfflineStorageDatabaseEnabled, false);
     pageSettings->setAttribute(QWebSettings::OfflineWebApplicationCacheEnabled, true);
     pageSettings->setAttribute(QWebSettings::FrameFlatteningEnabled, true);
 

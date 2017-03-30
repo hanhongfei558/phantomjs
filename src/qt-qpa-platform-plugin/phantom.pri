@@ -10,6 +10,8 @@ QMAKE_LFLAGS += $$QMAKE_LFLAGS_NOUNDEF
 
 INCLUDEPATH += $$PWD
 
-CONFIG += qpa/genericunixfontdatabase
+CONFIG += static qpa/genericunixfontdatabase
+
+contains(QT_CONFIG,fontconfig): LIBS_PRIVATE += $$QMAKE_LIBS_FONTCONFIG
 
 OTHER_FILES += $$PWD/phantom.json
