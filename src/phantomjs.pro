@@ -3,6 +3,9 @@ TARGET = phantomjs
 QT += network webkitwidgets
 CONFIG += console precompile_header
 
+OBJECTS_DIR = .obj
+MOC_DIR = .moc
+
 PRECOMPILED_HEADER = config.h
 
 DESTDIR = ../bin
@@ -108,3 +111,4 @@ linux {
 openbsd* {
     LIBS += -L/usr/X11R6/lib
 }
+
