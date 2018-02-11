@@ -1,4 +1,4 @@
-﻿/*
+/*
   This file is part of the PhantomJS project from Ofi Labs.
 
   Copyright (C) 2011 Klarälvdalens Datakonsult AB, a KDAB Group company, info@kdab.com

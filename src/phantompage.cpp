@@ -1,4 +1,4 @@
-﻿/*
+/*
   This file is part of the PhantomJS project from Ofi Labs.
 
   Copyright (C) 2011 Ariya Hidayat <ariya.hidayat@gmail.com>
@@ -97,10 +97,10 @@ QWebFrame* PhantomPage::mainFrame() const
 
 void PhantomPage::showInspector(qint16 port)
 {
+    Q_UNUSED(port);
+
     if (!m_webInspector)
         m_webInspector = new QWebInspector();
-
-    //m_webInspector.setPort(port);
 }
 
 // private

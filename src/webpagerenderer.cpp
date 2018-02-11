@@ -1,4 +1,4 @@
-﻿/*
+/*
   This file is part of the PhantomJS project from Ofi Labs.
 
   Copyright (C) 2011 Ariya Hidayat <ariya.hidayat@gmail.com>
@@ -80,8 +80,8 @@ static const struct {
 };
 
 WebPageRenderer::WebPageRenderer(CustomPage* customPage, qreal dpi, QObject* parent)
-    : m_customPage(customPage)
-    , QObject(parent)
+    : QObject(parent)
+    , m_customPage(customPage)
     , m_dpi(dpi)
 {
 }
