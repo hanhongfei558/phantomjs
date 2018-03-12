@@ -266,7 +266,7 @@ QString WebPageRenderer::renderToBase64(
 
     QByteArray ba;
     QBuffer bu(&ba);
-    bu.open(QIODevice::ReadOnly);
+    bu.open(QIODevice::WriteOnly);
     image->save(&bu, outputFormat.toLatin1().constData(), quality);
     delete image;
 
